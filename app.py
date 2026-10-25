@@ -28,7 +28,7 @@ if "baza_date_grupuri" not in st.session_state:
     toate_numerele_ruleta = list(range(0, 37))
     random.seed(42) # Seed fix pentru constanța matematică a grupurilor privatizate
     st.session_state["baza_date_grupuri"] = [
-        set(random.sample(toate_numerele_ruleta, 18)) for _ in range(100_000)
+        set(random.sample(toate_numerele_ruleta, 18)) for _ in range(1_000_000)
     ]
 
 # --- CODUL APLICAȚIEI AUTOMATE ---
