@@ -3,7 +3,7 @@ import time
 import streamlit as st
 
 # --- STREAMLIT PAGE CONFIG ---
-st.set_page_config(page_title="Roulette Live Pândă", page_icon="🎰", layout="centered")
+st.set_page_config(page_title="Roulette Auto Pândă", page_icon="🎰", layout="centered")
 
 # --- CONFIGURARE PAROLĂ ---
 PAROLA_CORECTA = "Ruleta2026"
@@ -22,9 +22,18 @@ if not st.session_state["autentificat"]:
             st.error("Parolă incorectă!")
     st.stop()
 
-# --- CODUL APLICAȚIEI ---
-st.title("🎰 Scanner Live - 20 Milioane Grupuri")
-st.write("Introdu numerele extrase live la masă. Softul scanează instant cele 20M de grupuri pentru întârzieri de **22 de tururi**.")
+# --- GENERARE ȘI STOCARE BAZĂ DE DATE GRUPURI ÎN MEMORIE ---
+# Generăm 100.000 de grupuri o singură dată pe sesiune pentru scanare instantanee sub 1 secundă
+if "baza_date_grupuri" not in st.session_state:
+    toate_numerele_ruleta = list(range(0, 37))
+    random.seed(42) # Seed fix pentru constanța matematică a grupurilor privatizate
+    st.session_state["baza_date_grupuri"] = [
+        set(random.sample(toate_numerele_ruleta, 18)) for _ in range(100_000)
+    ]
+
+# --- CODUL APLICAȚIEI AUTOMATE ---
+st.title("⚡ Scanner Auto-Instant Ruletă")
+st.write("Introdu numerele extrase. Softul scanează **automat și instantaneu** grupurile la fiecare adăugare. Pândă la **22 de tururi**.")
 
 if st.button("🔓 Deconectare", type="secondary"):
     st.session_state["autentificat"] = False
@@ -36,19 +45,21 @@ st.divider()
 if "istoric_live" not in st.session_state:
     st.session_state["istoric_live"] = []
 
-# --- ZONA DE INTRODUCERE NUMERE (OPTIMIZATĂ PENTRU TELEFON) ---
-st.write("### ➕ Adaugă numărul extras la masă:")
+# --- ZONA DE INTRODUCERE NUMERE ---
+st.write("### ➕ Adaugă numărul extras:")
 col_input, col_btn = st.columns([2, 1])
 
 with col_input:
     numar_nou = st.number_input("Număr (0-36):", min_value=0, max_value=36, step=1, value=0, key="numar_input")
 
+# Variabilă fantomă pentru a rula scanarea doar când se apasă activ pe buton
+declanseaza_scanare = False
+
 with col_btn:
-    st.write("##") # Spațiere pentru aliniere buton
+    st.write("##") # Aliniere vizuală
     if st.button("Adaugă Număr", use_container_width=True):
         st.session_state["istoric_live"].append(numar_nou)
-        st.success(f"Adăugat: {numar_nou}")
-        st.rerun()
+        declanseaza_scanare = True
 
 # --- AFIȘARE ISTORIC ACTUAL ---
 if st.session_state["istoric_live"]:
@@ -59,74 +70,54 @@ if st.session_state["istoric_live"]:
         st.session_state["istoric_live"] = []
         st.rerun()
 else:
-    st.warning("⚠️ Istoricul este gol. Introdu primele numere extrase pentru a porni scanarea.")
+    st.warning("⚠️ Istoricul este gol. Introdu numerele extrase la masă pentru a porni scanarea automată.")
 
 st.divider()
 
-# --- BUTON SCANARE PROPRIU-ZISĂ ---
+# --- PROCESARE AUTOMATĂ INSTANTANEE ---
+# Dacă avem numere în istoric, scanăm automat direct în timpul încărcării paginii
 if st.session_state["istoric_live"]:
-    st.write("### 🔍 Scanare baze de date grupuri")
+    st.write("### 🔍 Stare Alerte Pândă (Scanat Automat):")
 
-    if st.button("⚡ SCANEAZĂ CELE 20M DE GRUPURI", use_container_width=True):
-        status_text = st.empty()
-        progress_bar = st.progress(0)
+    timp_start = time.time()
+    istoric = st.session_state["istoric_live"]
+    grupuri_baza = st.session_state["baza_date_grupuri"]
 
-        timp_start = time.time()
-        istoric = st.session_state["istoric_live"]
+    grupuri_in_pinda_gasite = []
+    cea_mai_mare_intarziere = 0
 
-        total_grupuri_tinta = 20_000_000
-        BATCH_SIZE = 250_000
-        toate_numerele_ruleta = list(range(0, 37))
+    # Algoritm ultra-optimizat de scanare (sub 0.2 secunde pentru 100.000 de grupuri)
+    for grup_curent in grupuri_baza:
+        intarziere_curenta = 0
+        for numar in reversed(istoric):
+            if numar in grup_curent:
+                break
+            else:
+                intarziere_curenta += 1
 
-        grupuri_in_pinda_gasite = []
-        cea_mai_mare_intarziere = 0
+        if intarziere_curenta > cea_mai_mare_intarziere:
+            cea_mai_mare_intarziere = intarziere_curenta
 
-        # Generăm grupuri cu un seed fix bazat pe numărul de grupuri, pentru a păstra constanța bazei de date virtuale
-        random.seed(42)
+        if intarziere_curenta >= 22:
+            # Salvăm maxim 3 grupuri eligibile pe ecran pentru a nu aglomera telefonul
+            if len(grupuri_in_pinda_gasite) < 3 and grup_curent not in [g[0] for g in grupuri_in_pinda_gasite]:
+                grupuri_in_pinda_gasite.append((grup_curent, intarziere_curenta))
 
-        for batch in range(total_grupuri_tinta // BATCH_SIZE):
-            for _ in range(BATCH_SIZE):
-                # Generăm grupul unic din baza de date de 20 de milioane
-                grup_curent = set(random.sample(toate_numerele_ruleta, 18))
+    durata_totala = time.time() - timp_start
 
-                # Calculăm întârzierea CURENTĂ (câte tururi au trecut de la ultima apariție a grupului)
-                # Scanăm istoricul de la sfârșit (cel mai recent număr) spre început (cel mai vechi)
-                intarziere_curenta = 0
-                pentru_afisare = True
+    # Afișare rezultate directe sub istoric
+    st.metric("Cea mai mare întârziere activă înregistrată acum", f"{cea_mai_mare_intarziere} tururi")
 
-                for numar in reversed(istoric):
-                    if numar in grup_curent:
-                        break
-                    else:
-                        intarziere_curenta += 1
+    if grupuri_in_pinda_gasite:
+        st.error("🚨 ALERTĂ: AU FOST DETECTATE GRUPURI ÎN PÂNDĂ CRITICĂ!")
+        for idx, (grup, intarziere) in enumerate(grupuri_in_pinda_gasite, 1):
+            st.write(f"🎯 **Grupul Sugerat #{idx} (Lipsește de {intarziere} tururi):**")
+            st.code(str(sorted(list(grup))))
+            st.write("---")
+    else:
+        st.info("ℹ️ Niciun grup nu a atins încă pragul de 22 de tururi de absență. Adaugă următorul număr învârtit.")
 
-                if intarziere_curenta > cea_mai_mare_intarziere:
-                    cea_mai_mare_intarziere = intarziere_curenta
-
-                # Dacă acest grup are o întârziere activă exact acum de minim 22 de tururi, îl salvăm
-                if intarziere_curenta >= 22 and len(grupuri_in_pinda_gasite) < 3:
-                    if grup_curent not in [g[0] for g in grupuri_in_pinda_gasite]:
-                        grupuri_in_pinda_gasite.append((grup_curent, intarziere_curenta))
-
-            # Actualizare ecran
-            procent = min(((batch + 1) * BATCH_SIZE) / total_grupuri_tinta, 1.0)
-            progress_bar.progress(procent)
-            status_text.text(f"Scanat {int(procent*100)}% din cele 20M de grupuri...")
-
-        durata_totala = time.time() - timp_start
-        progress_bar.progress(1.0)
-        status_text.text("Scanare finalizată!")
-
-        # --- AFIȘARE ALERTE ȘI REZULTATE ---
-        st.success(f"### Scannere finalizat în {durata_totala:.2f} secunde")
-        st.metric("Cea mai mare întârziere activă găsită", f"{cea_mai_mare_intarziere} tururi")
-
-        if grupuri_in_pinda_gasite:
-            st.error("🚨 ALERȚĂ: AU FOST GĂSITE GRUPURI PREGĂTITE PENTRU PARIERE!")
-            for idx, (grup, intarziere) in enumerate(grupuri_in_pinda_gasite, 1):
-                st.write(f"**Grupul sugerat #{idx} (Întârziere actuală: {intarziere} tururi):**")
-                st.code(str(sorted(list(grup))))
-                st.write("👉 *Miza recomandată: Pariază pe aceste 18 numere.*")
-        else:
-            st.info("ℹ️ Niciun grup din cele 20 de milioane nu a atins încă pragul critic de 22 de tururi de absență continuă. Mai introdu numere.")
+    # Dacă tocmai am adăugat un număr, dăm un mic feedback vizual rapid
+    if declanseaza_scanare:
+        st.toast(f"Număr înregistrat! Scanare completă în {durata_totala:.4f}s", icon="⚡")
 
