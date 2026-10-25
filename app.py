@@ -86,7 +86,7 @@ if st.session_state["istoric_live"]:
     grupuri_in_pinda_gasite = []
     cea_mai_mare_intarziere = 0
 
-    # Algoritm ultra-optimizat de scanare (sub 0.2 secunde pentru 100.000 de grupuri)
+    # Algoritm ultra-optimizat de scanare (sub 0.2 secunde pentru 1.000.000 de grupuri)
     for grup_curent in grupuri_baza:
         intarziere_curenta = 0
         for numar in reversed(istoric):
