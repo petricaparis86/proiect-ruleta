@@ -54,7 +54,7 @@ if "istoric_live" not in st.session_state:
 
 # --- ZONA DE INTRODUCERE NUMERE ---
 st.write("### ➕ Adaugă numărul extras:")
-col_input, col_btn = st.columns()
+col_input, col_btn = st.columns(2)
 
 with col_input:
     numar_nou = st.number_input("Număr (0-36):", min_value=0, max_value=36, step=1, value=0, key="numar_input")
